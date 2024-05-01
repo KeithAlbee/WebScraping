@@ -1,0 +1,75 @@
+from bs4 import BeautifulSoup
+import requests
+import pandas as pd
+import matplotlib.pyplot as plt
+import plotly.graph_objs as go
+
+# Getting copy of page HTML into console
+url = 'https://en.wikipedia.org/wiki/WTA_rankings'
+page = requests.get(url)
+soup = BeautifulSoup(page.text, 'html.parser')
+
+# Parsing through to find the correct table
+table = soup.find('table', class_='wikitable nowrap', style='text-align:center; display:inline-table;')
+
+# Creating a list to hold row data
+rows_data = []
+
+# Parsing the HTML for the data
+data_rows = table.find_all('tr')[1:]  # Skip the header row
+for row in data_rows:
+    # Extracting data only from the first three columns
+    row_data = [td.text.strip() for td in row.find_all('td')[:3]]
+    rows_data.append(row_data)
+
+# Remove the first row if it contains only None values
+if all(val is None for val in rows_data[0]):
+    rows_data.pop(0)
+
+# Creating DataFrame from row data without specifying column names initially
+df = pd.DataFrame(rows_data)
+
+# Adjusting column names
+df.columns = ["Ranking", "Player", "Points"]
+
+# Convert the "Points" column to numeric by removing commas
+df['Points'] = df['Points'].str.replace(',', '').astype(int)
+
+# Sort the DataFrame by the "Points" column in descending order
+df = df.sort_values(by='Points', ascending=False)
+
+# Select the top 10 rows
+top_10 = df.head(10)
+
+# Plotly bar chart
+fig = go.Figure()
+
+fig.add_trace(go.Bar(
+    x=top_10['Player'],
+    y=top_10['Points'],
+    marker_color='#14453d',  # Change bar color to #14453d
+    hoverinfo='text',  # Show additional info on hover
+    text=None,  # Remove text inside bars
+    hovertext=top_10['Player'] + '<br>' + top_10['Points'].astype(str) + ' Points',  # Tooltip content
+))
+
+fig.update_layout(
+    title='Top 10 Ranked WTA Players and Their Points',
+    title_x=0.5,  # Center title horizontally
+    title_y=0.95,  # Adjust title vertically if needed
+    xaxis=dict(title='Player', tickfont=dict(color='black'), tickangle=-45),  # X-axis color and tilt player names
+    yaxis=dict(title='Points', tickfont=dict(color='black')),  # Y-axis color
+    plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot background
+    paper_bgcolor='rgba(0,0,0,0)',  # Transparent paper background
+    hoverlabel=dict(bgcolor='white', font_size=12),  # Tooltip styling
+    font=dict(family='Arial', size=20, color='black'),  # Font style
+    margin=dict(l=50, r=50, t=80, b=50),  # Adjust margins
+)
+
+fig.show()
+
+
+
+
+
+
